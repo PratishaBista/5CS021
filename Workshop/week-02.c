@@ -48,8 +48,9 @@
 //Q4. Write a function named "velocityCalc" which returns an appropriate value for the formula "v= u + at", where v is the final velocity, u is the initial velocity, a is the acceleration and t is the time that has elapsed. Depending upon which variable is set to "NAN" when the function is called, your function should work it out and return the value. 
 
 // #include <stdio.h>
-// #include <math.h> 
+// #include <math.h>
 
+// // Function to calculate the missing variable
 // double velocityCalc(double v, double u, double a, double t) {
 //     if (isnan(v)) { 
 //         return u + a * t;
@@ -67,10 +68,25 @@
 // }
 
 // int main() {
-//     double result = velocityCalc(NAN, 10, 2, 5); 
-//     printf("Result is %.2f\n", result); 
+//     double v = NAN, u = 10, a = 2, t = 5; // Example input
+//     double result = velocityCalc(v, u, a, t);
+
+//     // Determine which variable is being calculated and print the result with units
+//     if (isnan(v)) {
+//         printf("The calculated final velocity (v) is: %.2f m/s\n", result);
+//     } else if (isnan(u)) {
+//         printf("The calculated initial velocity (u) is: %.2f m/s\n", result);
+//     } else if (isnan(a)) {
+//         printf("The calculated acceleration (a) is: %.2f m/s²\n", result);
+//     } else if (isnan(t)) {
+//         printf("The calculated time (t) is: %.2f s\n", result);
+//     } else {
+//         printf("All variables are known; no calculation needed.\n");
+//     }
+
 //     return 0;
 // }
+
 
 
 //Q5. Write a void function named “equations” which solves simultaneous equations. Your
@@ -87,18 +103,22 @@
 // f = constant of equation two
 
 
-#include <stdio.h>
-void equations(double a, double b, double c, double d, double e, double f) {
-    //ax + by = c
-    //dx + ey = f
-       
-    double y = (d * c + a* e* f - a * f)/ b * d;
-    double x = (c - b * y )/ a;
-  
-    printf("x = %.2f, y = %.2f\n", x, y);
-}
+// #include <stdio.h>
 
-int main () {
-    equations (1, 2, 3, 4, 5, 6);
-    return 0;
-}
+// void equations(double a, double b, double c, double d, double e, double f) {
+//     // ax + by = c
+//     // dx + ey = f
+
+//     double y = (a*f - c*d) / (a*e - b*d);
+
+//     // Now that we have y, solve for x using Equation 1
+//     double x = (c - b*y) / a;
+
+//     printf("x = %.2f, y = %.2f\n", x, y);
+// }
+
+// int main() {
+
+//     equations(1, 2, 3, 4, 5, 6);  // ax + by = c, dx + ey = f
+//     return 0;
+// }
