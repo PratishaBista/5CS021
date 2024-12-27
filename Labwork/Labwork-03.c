@@ -323,7 +323,6 @@ int main() {
             scanf("%d", &arr2[i][j]);
         }
     }
-
     // Add the matrices
     addMatrices(m1, n1, arr1, arr2, result);
 
@@ -335,9 +334,9 @@ int main() {
         }
         printf("\n");
     }
-
     return 0;
 }
+
 // User Input for Matrix Dimensions:
 
 // Ask for dimensions for the first matrix (m1 x n1).
