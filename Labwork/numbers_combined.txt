@@ -1,0 +1,5 @@
+Contents from prime.txt
+The prime numbers are: 1 2 3 7 
+
+Contents from composite.txt
+The composite numbers are: 44 26 25 

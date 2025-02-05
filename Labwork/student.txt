@@ -1,0 +1,10 @@
+Student 1:
+Name: Lianna
+Age: 25
+Marks: 90.00
+
+Student 1:
+Name: Erykha
+Age: 31
+Marks: 87.00
+

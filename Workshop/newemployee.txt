@@ -1,0 +1,25 @@
+Employee 1:
+Name:Isha
+Age:11
+Salary:1200.00
+Employee 2:
+Name:Bandana
+Age:11
+Salary:1300.00
+Employee 3:
+Name:Aditi
+Age:12
+Salary:1400.00
+Employee 4:
+Name:Pratisha
+Age:12
+Salary:1300.00
+Employee 5:
+Name:Ayusha
+Age:11
+Salary:1400.00
+
+New Employee Details:
+Name: Jane Smith
+Position: Project Manager
+Salary: $95,000
