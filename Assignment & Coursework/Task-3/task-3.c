@@ -1,12 +1,31 @@
+/**
+ * @file task-3.c
+ * @brief Multi-threaded prime number finder from multiple files.
+ * 
+ * This program reads numbers from three input files and uses multi-threading to find prime numbers.
+ * The prime numbers are written to an output file ("output.txt").
+ * 
+ * Usage:
+ *  - Compile with: gcc -pthread task-3.c -o task-3 
+ *  - Run: ./task-3.exe (on windows)
+ *  - Ensure input files "PrimeData1.txt", "PrimeData2.txt", and "PrimeData3.txt" exist with integer data.
+ * 
+ * Features:
+ *  - Reads numbers from three text files.
+ *  - Uses four threads to check for prime numbers in parallel.
+ *  - Stores prime numbers in "output.txt" using thread-safe file operations.
+ *  - Utilizes mutex locks to avoid race conditions while writing to the output file.
+ * 
+ * @author Pratisha Bista
+ * @student_id 2408284
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <math.h>
-
-#define MAX_NUMBERS 1000  
-#define NUM_THREADS 4      
-
-pthread_mutex_t lock;  
+ 
+pthread_mutex_t mutex;  
 
 int *numbersArray;      
 int primeCount = 0;    
@@ -40,10 +59,10 @@ void *find_primes(void *arg) {
 
     for (int i = start; i <= end; i++) {
         if (is_prime(numbersArray[i])) {
-            pthread_mutex_lock(&lock);  
+            pthread_mutex_lock(&mutex);  
             fprintf(outputFile, "%d\n", numbersArray[i]);
             primeCount++;
-            pthread_mutex_unlock(&lock);  
+            pthread_mutex_unlock(&mutex);  
         }
     }
 
@@ -89,16 +108,16 @@ int main() {
     fclose(file2);
     fclose(file3);
 
-    pthread_mutex_init(&lock, NULL);
+    pthread_mutex_init(&mutex, NULL);
 
-    pthread_t threads[NUM_THREADS];
-    struct ThreadData threadData[NUM_THREADS];
+    pthread_t threads[1000];
+    struct ThreadData threadData[4];
 
-    int baseSize = totalNumbers / NUM_THREADS;
-    int extra = totalNumbers % NUM_THREADS;
+    int baseSize = totalNumbers / 4;
+    int extra = totalNumbers % 4;
 
     int startIndex = 0;
-    for (int i = 0; i < NUM_THREADS; i++) {
+    for (int i = 0; i < 4; i++) {
         threadData[i].startIndex = startIndex;
         threadData[i].endIndex = startIndex + baseSize - 1;
         if (i < extra) {
@@ -109,13 +128,13 @@ int main() {
         pthread_create(&threads[i], NULL, find_primes, &threadData[i]);
     }
 
-    for (int i = 0; i < NUM_THREADS; i++) {
+    for (int i = 0; i < 4; i++) {
         pthread_join(threads[i], NULL);
     }
 
     printf("Total Prime Numbers: %d\n", primeCount);
 
-    pthread_mutex_destroy(&lock);
+    pthread_mutex_destroy(&mutex);
     free(numbersArray);
 
     return 0;

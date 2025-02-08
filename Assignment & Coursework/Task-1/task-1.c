@@ -1,122 +1,117 @@
+/**
+ * @file task-1.c
+ * @brief Multi-file linear regression calculator using the least squares method.
+ * 
+ * This program reads data points (x, y) from multiple files and calculates
+ * the equation of the regression line using the formula:
+ * 
+ *      y = b * x + a
+ * 
+ * Where:
+ *      - b (slope) = (n * Σxy - Σx * Σy) / (n * Σx² - (Σx)²)
+ *      - a (intercept) = (Σy - b * Σx) / n
+ * 
+ * Features:
+ *  - Reads data from four separate text files.
+ *  - Computes the best-fit line using least squares regression.
+ *  - Allows the user to input an x-value to predict the corresponding y-value.
+ * 
+ * Usage:
+ *  - Ensure that datasetLR1.txt, datasetLR2.txt, datasetLR3.txt, and datasetLR4.txt 
+ *    exist in the same directory and contain comma-separated (x, y) values.
+ *  - Compile with: gcc -pthread task-1.c -o task-1
+ *  - Run: ./task-1.exe (on windows)
+ * 
+ * @author Pratisha Bista
+ * @student_id 2408284
+ * @last_modified 2025-02-08
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
-/**
- * Reads data from a file and stores x and y coordinates.
- * 
- * @param filename The name of the file to be read.
- * @param x_coordinate Array to store x coordinates.
- * @param y_coordinate Array to store y coordinates.
- * @param count The number of data points read from the file.
- * @return 0 if successful, -1 if an error occurs.
- */
-int read_file(const char *filename, float *x_coordinate, float *y_coordinate, int *count)
-{
-    FILE *file = fopen(filename, "r");
-    if (file == NULL)
-    {
-        printf("Cannot open %s", filename);
-        return -1;
-    }
-
-    char line[20]; 
-    *count = 0;  
-
-    while (fgets(line, sizeof(line), file))
-    {
-        if (sscanf(line, "%f,%f", &x_coordinate[*count], &y_coordinate[*count]) == 2)
-        {
-            (*count)++;
-        }
-    }
-
-    fclose(file);
-    return 0; 
-}
-
-/**
- * Calculates the slope (b) and intercept (a) for linear regression.
- * 
- * @param x Array of x coordinates.
- * @param y Array of y coordinates.
- * @param n Number of data points.
- * @param a Pointer to store the intercept value.
- * @param b Pointer to store the slope value.
- */
-void calculate_linear_regression(float *x, float *y, int n, float *a, float *b)
-{
-    float sum_x = 0, sum_y = 0, sum_xy = 0, sum_x_squared = 0;
-
-    for (int i = 0; i < n; i++)
-    {
-        sum_x += x[i];
-        sum_y += y[i];
-        sum_xy += x[i] * y[i];
-        sum_x_squared += x[i] * x[i];
-    }
-
-    // Calculate the slope (b)
-    *b = (n * sum_xy - sum_x * sum_y) / (n * sum_x_squared - sum_x * sum_x);
-
-    // Calculate the intercept (a)
-    *a = (sum_y * sum_x_squared - sum_x * sum_xy) / (n * sum_x_squared - sum_x * sum_x);
-}
-
-/**
- * Displays the equation of the line in the form y = bx + a.
- * 
- * @param a The intercept value.
- * @param b The slope value.
- */
-void display_equation(float a, float b)
-{
-    printf("The equation of the line is: y = %.2fx + %.2f\n", b, a);
-}
-
-/**
- * Calculates the value of y given x using the linear equation y = bx + a.
- * 
- * @param a The intercept value.
- * @param b The slope value.
- * @param x The x value.
- * @return The calculated y value.
- */
-float calculate_y(float a, float b, float x)
-{
-    return (b * x) + a;
-}
+void calculate_linear_regression();  
 
 int main()
 {
-    float x[1000], y[1000];
-    int count = 0;
-    float a = 0, b = 0;
+    calculate_linear_regression();  
+    return 0;
+}
 
-    for (int i = 1; i <= 4; i++)
+/**
+ * @brief Reads data points from multiple files and calculates the regression line equation.
+ *
+ * This function reads (x, y) values from four text files, sums up the required values, 
+ * and calculates the slope (b) and intercept (a) of the regression line using the 
+ * least squares method. It then predicts a y-value for a given x-input from the user.
+ */
+void calculate_linear_regression()
+{
+    FILE *f1, *f2, *f3, *f4;  
+    float x, y;
+    float sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+    int n = 0;
+
+    f1 = fopen("datasetLR1.txt", "r");
+    f2 = fopen("datasetLR2.txt", "r");
+    f3 = fopen("datasetLR3.txt", "r");
+    f4 = fopen("datasetLR4.txt", "r");
+
+    if (f1 == NULL || f2 == NULL || f3 == NULL || f4 == NULL)
     {
-        char filename[50];
-        sprintf(filename, "datasetLR%d.txt", i); 
-
-        if (read_file(filename, x, y, &count) != 0)
-        {
-            printf("Cannot read %s\n", filename);
-            return 1; 
-        }
+        printf("Error! Could not open one of the files.\n");
+        exit(1);
     }
 
-    calculate_linear_regression(x, y, count, &a, &b);
+    while (fscanf(f1, "%f,%f", &x, &y) != EOF)
+    {
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_xx += x * x;
+        n++;
+    }
+    fclose(f1); 
 
-    display_equation(a, b);
+    while (fscanf(f2, "%f,%f", &x, &y) != EOF)
+    {
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_xx += x * x;
+        n++;
+    }
+    fclose(f2);
+
+    while (fscanf(f3, "%f,%f", &x, &y) != EOF)
+    {
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_xx += x * x;
+        n++;
+    }
+    fclose(f3);
+
+    while (fscanf(f4, "%f,%f", &x, &y) != EOF)
+    {
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_xx += x * x;
+        n++;
+    }
+    fclose(f4);
+
+    float b = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+    float a = (sum_y - b * sum_x) / n;
+
+    printf("\nEquation of regression line: y = %.3f * x + %.3f\n", b, a);
 
     float x_input;
     printf("Enter a value for x: ");
     scanf("%f", &x_input);
-    printf("Calculated y: %.2f\n", calculate_y(a, b, x_input));
 
-    return 0;
+    float result = b * x_input + a;
+    printf("Predicted y value: %.3f\n", result);
 }
-
-// ===================OUTPUT=======================
-// The equation of the line is: y = 0.17x + 171.62
-// Enter a value for x: 9
-// Calculated y: 173.16

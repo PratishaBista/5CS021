@@ -1,183 +1,142 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include "lodepng.h"
-#include "lodepng.c"
-
-const float gaussian_kernel[3][3] = {
-    {0.0625f, 0.1250f, 0.0625f},
-    {0.1250f, 0.2500f, 0.1250f},
-    {0.0625f, 0.1250f, 0.0625f}};
-
-typedef struct
-{
-    unsigned char *image;
-    unsigned char *output;
-    unsigned width;
-    unsigned height;
-    int start;
-    int end;
-} ThreadParams;
-
 /**
- * applies a gaussian blur filter to a section of the image.
- *
- * @param data a struct containing the image data, output buffer, dimensions, and row range.
- * @return void (no return value).
+ * @file task-4.c
+ * @brief Multi-threaded Gaussian Blur filter for PNG images.
+ * 
+ * This program applies a Gaussian blur filter to an input PNG image using multiple threads.
+ * It reads an image, processes it using pthreads, and then saves the blurred image.
+ * 
+ * Usage:
+ *  - Compile with: gcc -pthread task-4.c -o task-4 -lpthread 
+ *  - Run: ./task-4.exe (on windows)
+ *  - Enter the input PNG filename, output PNG filename, and number of threads.
+ * 
+ * Features:
+ *  - Uses a 3x3 Gaussian kernel to blur the image.
+ *  - Supports multi-threading for efficient processing.
+ *  - Reads and writes PNG images using the LodePNG library.
+ * 
+ * @author Pratisha Bista
+ * @student_id 2408284
  */
 
-void apply_gaussian_blur(ThreadParams *data)
-{
-    int kernel_radius = 3 / 2;
-    unsigned char *image = data->image;
-    unsigned char *output = data->output;
-    unsigned width = data->width;
-    unsigned height = data->height;
-    int start = data->start;
-    int end = data->end;
+#include <pthread.h> 
+#include <stdio.h>   
+#include <stdlib.h> 
+#include "lodepng.h" 
+#include "lodepng.c"
 
-    for (int row = start; row < end; row++)
-    {
-        for (int col = 0; col < width; col++)
-        {
-            float red_sum = 0, green_sum = 0, blue_sum = 0;
-            float weight_sum = 0;
+unsigned char *blurredImg;
+unsigned char *originalImg;
+unsigned imgWidth, imgHeight;
 
-            for (int kernel_row = -kernel_radius; kernel_row <= kernel_radius; kernel_row++)
-            {
-                for (int kernel_col = -kernel_radius; kernel_col <= kernel_radius; kernel_col++)
-                {
-                    int neighbor_col = col + kernel_col;
-                    int neighbor_row = row + kernel_row;
+const float kernel[3][3] = {
+    {1 / 16.0, 2 / 16.0, 1 / 16.0},
+    {2 / 16.0, 4 / 16.0, 2 / 16.0},
+    {1 / 16.0, 2 / 16.0, 1 / 16.0}
+};
 
-                    /** If the target pixel is at (row, col), the neighboring pixels are:
-                    Top-left: (row - 1, col - 1)
-                    Top-center: (row - 1, col)
-                    Top-right: (row - 1, col + 1)
-                    Left: (row, col - 1)
-                    Right: (row, col + 1)
-                    Bottom-left: (row + 1, col - 1)
-                    Bottom-center: (row + 1, col)
-                    Bottom-right: (row + 1, col + 1)
-                    */
+struct ThreadRange {
+    unsigned int startRow;
+    unsigned int endRow;
+};
 
-                    if (neighbor_col >= 0 && neighbor_col < width && neighbor_row >= 0 && neighbor_row < height)
-                    {
-                        int neighbor_index = 4 * (neighbor_row * width + neighbor_col);
-                        float weight = gaussian_kernel[kernel_row + kernel_radius][kernel_col + kernel_radius];
-                        red_sum += image[neighbor_index] * weight;
-                        green_sum += image[neighbor_index + 1] * weight;
-                        blue_sum += image[neighbor_index + 2] * weight;
-                        weight_sum += weight;
+void *applyGaussianBlur(void *arg) {
+    struct ThreadRange *range = (struct ThreadRange *)arg;
+    int startRow = range->startRow;
+    int endRow = range->endRow;
+
+    for (int y = startRow; y <= endRow; y++) {
+        for (int x = 0; x < imgWidth; x++) {
+            float red = 0, green = 0, blue = 0, alpha = 0;
+
+            for (int ky = -1; ky <= 1; ky++) {
+                for (int kx = -1; kx <= 1; kx++) {
+                    int pixelX = x + kx;
+                    int pixelY = y + ky;
+
+                    if (pixelX >= 0 && pixelX < imgWidth && pixelY >= 0 && pixelY < imgHeight) {
+                        int pixelIndex = (pixelY * imgWidth + pixelX) * 4;
+                        float weight = kernel[ky + 1][kx + 1];
+
+                        red += originalImg[pixelIndex] * weight;
+                        green += originalImg[pixelIndex + 1] * weight;
+                        blue += originalImg[pixelIndex + 2] * weight;
+                        alpha += originalImg[pixelIndex + 3] * weight;
                     }
                 }
             }
-            int pixel_index = 4 * (row * width + col);
-            output[pixel_index] = (unsigned char)(red_sum / weight_sum);
-            output[pixel_index + 1] = (unsigned char)(green_sum / weight_sum);
-            output[pixel_index + 2] = (unsigned char)(blue_sum / weight_sum);
-            output[pixel_index + 3] = image[pixel_index + 3];
-        }
-    }
-}
 
-/**
- * thread function that applies gaussian blur to a portion of the image.
- *
- * @param threadParams pointer to a ThreadParams struct containing the image section to process.
- * @return always returns NULL.
- */
-void *thread_function(void *threadParams)
-{
-    apply_gaussian_blur((ThreadParams *)threadParams);
-    return NULL;
-}
-
-/**
- * loads an image, applies a gaussian blur using multithreading, and saves the output image.
- *
- * @param input_path file path of the input png image.
- * @param output_path file path to save the processed output image.
- * @return 0 on success, 1 on failure.
- */
-int process_image(const char *input_path, const char *output_path)
-{
-    unsigned char *image = NULL, *output = NULL;
-    unsigned width, height;
-
-    if (lodepng_decode32_file(&image, &width, &height, input_path) != 0)
-    {
-        printf("Error: Could not load the image.\n");
-        return 1;
-    }
-
-    int center_row = height / 2;
-    int center_col = width / 2;
-    printf("Image dimensions: %dx%d\n", width, height);
-    printf("Total values: %d\n", width * height * 4);
-    printf("Center pixel: (%d, %d)\n", center_col, center_row);
-
-    printf("\nNeighbors of the center pixel:\n");
-    for (int dr = -1; dr <= 1; dr++)
-    {
-        for (int dc = -1; dc <= 1; dc++)
-        {
-            int neighbor_row = center_row + dr;
-            int neighbor_col = center_col + dc;
-
-            if (neighbor_row >= 0 && neighbor_row < height && neighbor_col >= 0 && neighbor_col < width)
-            {
-                int index = 4 * (neighbor_row * width + neighbor_col);
-                printf("Pixel at (%d, %d): R=%d, G=%d, B=%d, A=%d\n",
-                       neighbor_row, neighbor_col,
-                       image[index], image[index + 1], image[index + 2], image[index + 3]);
-            }
+            int outputIndex = (y * imgWidth + x) * 4;
+            blurredImg[outputIndex] = (unsigned char)red;
+            blurredImg[outputIndex + 1] = (unsigned char)green;
+            blurredImg[outputIndex + 2] = (unsigned char)blue;
+            blurredImg[outputIndex + 3] = (unsigned char)alpha;
         }
     }
 
-    output = (unsigned char *)malloc(width * height * 4);
-    if (!output)
-    {
-        printf("Error: Could not allocate memory for the output image.\n");
-        free(image);
+    pthread_exit(NULL);
+}
+
+int main() {
+    unsigned error;
+    char inputFile[50], outputFile[50];
+
+    printf("Enter input PNG file name: ");
+    scanf("%s", inputFile);
+
+    error = lodepng_decode32_file(&originalImg, &imgWidth, &imgHeight, inputFile);
+    if (error) {
+        printf("Error decoding image %u: %s\n", error, lodepng_error_text(error));
         return 1;
     }
+    
+    printf("Image dimensions: Width = %u px, Height = %u px\n", imgWidth, imgHeight);
 
-    pthread_t threads[4];
-    ThreadParams thread_data[4];
-    int rows_per_thread = height / 4;
+    printf("Enter output PNG file name: ");
+    scanf("%s", outputFile);
 
-    for (int i = 0; i < 4; i++)
-    {
-        thread_data[i] = (ThreadParams){image, output, width, height, i * rows_per_thread, (i == 4 - 1) ? height : (i + 1) * rows_per_thread};
-        pthread_create(&threads[i], NULL, thread_function, &thread_data[i]);
+    blurredImg = (unsigned char *)malloc(imgWidth * imgHeight * 4 * sizeof(unsigned char));
+
+    int numThreads;
+    printf("Enter the number of threads: ");
+    scanf("%d", &numThreads);
+
+    int rowsPerThread = imgHeight / numThreads;
+    int extraRows = imgHeight % numThreads; 
+
+    struct ThreadRange threadRanges[numThreads];
+    pthread_t threads[numThreads];
+
+    int currentStartRow = 0;
+
+    for (int i = 0; i < numThreads; i++) {
+        threadRanges[i].startRow = currentStartRow;
+        threadRanges[i].endRow = currentStartRow + rowsPerThread - 1;
+
+        if (extraRows > 0) {
+            threadRanges[i].endRow++;
+            extraRows--;
+        }
+
+        currentStartRow = threadRanges[i].endRow + 1;
+
+        pthread_create(&threads[i], NULL, applyGaussianBlur, &threadRanges[i]);
     }
 
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < numThreads; i++) {
         pthread_join(threads[i], NULL);
     }
 
-    if (lodepng_encode32_file(output_path, output, width, height) != 0)
-    {
-        printf("Error: Could not save the output image.\n");
-        free(image);
-        free(output);
+    error = lodepng_encode32_file(outputFile, blurredImg, imgWidth, imgHeight);
+    if (error) {
+        printf("Error encoding image %u: %s\n", error, lodepng_error_text(error));
         return 1;
     }
 
-    printf("\nOutput saved to: %s\n", output_path);
-    free(image);
-    free(output);
-    return 0;
-}
+    printf("Blurred image saved successfully.\n");
 
-/**
- * entry point of the program, processes an image using gaussian blur.
- *
- * @return 0 if the image processing is successful, 1 if an error occurs.
- */
-int main()
-{
-    return process_image("input.png", "output.png");
+    free(blurredImg);
+    free(originalImg);
+
+    return 0;
 }

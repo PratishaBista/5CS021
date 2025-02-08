@@ -1,23 +1,51 @@
-#include <stdio.h>
-#include <pthread.h>
+/**
+ * @file task-2.c
+ * @brief Multi-threaded computation of Pi using the Leibniz series.
+ * 
+ * This program approximates the value of Pi using the Leibniz formula:
+ * 
+ *      Pi ≈ 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - ...)
+ * 
+ * The computation is divided among multiple threads, where each thread
+ * calculates a portion of the series and contributes to the final sum.
+ * 
+ * Usage:
+ *  - Compile with: gcc -pthread task-2.c -o task-2
+ *  - Run: ./task-2.exe (on windows)
+ *  - Input the number of iterations (higher values improve accuracy).
+ *  - Input the number of threads to divide the workload.
+ * 
+ * Features:
+ *  - User-defined number of iterations for precision.
+ *  - Multi-threaded execution for computation.
+ *  - Dynamic memory allocation for efficient storage of partial sums.
+ *  - Outputs an approximation of Pi with 15 decimal places.
+ * 
+ * @author Pratisha Bista
+ * @student_id 2408284
+ * @last_modified 2025-02-08 18:19:52
+ */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <math.h>
+
+//global variables
 int total_iterations;
 int num_threads;
-double pi_sum = 0.0;
-pthread_mutex_t mutex;
+double *thread_sums; //array to store the sum calculated by each thread
 
-/**
- * @brief Calculates a portion of the value of Pi using the Leibniz formula.
+/*
+ * Function to calculate a part of Pi using the Leibniz formula.
+ * Pi = 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - ...)
+ * Each thread calculates a portion of the sum based on the given range.
  *
- * This function is executed by each thread to calculate a part of Pi. 
- * Each thread computes a range of terms from the series based on the total 
- * number of iterations and the number of threads. The results are then 
- * accumulated in a shared variable, `pi_sum`, with thread synchronization
- * using a mutex to prevent race conditions.
+ * Parameters:
+ * - threadParams: Pointer to the thread ID.
  *
- * @param threadParams Pointer to the thread ID.
- * 
- * @return NULL (void return type for thread functions in C).
+ * Returns:
+ * - NULL: Function does not return any value (void).
  */
 void *calculate_pi(void *threadParams)
 {
@@ -27,30 +55,18 @@ void *calculate_pi(void *threadParams)
     int start_index = thread_id * range;
     int end_index = (thread_id == num_threads - 1) ? total_iterations - 1 : start_index + range - 1;
 
+    double local_sum = 0.0;
+
     for (int i = start_index; i <= end_index; i++)
     {
-        double term = ((i % 2 == 0 ? 1 : -1) * 1.0) / (2 * i + 1);
-
-        pthread_mutex_lock(&mutex);
-        pi_sum += term;
-        pthread_mutex_unlock(&mutex);
+        local_sum += pow(-1, i) / (2 * i + 1);
     }
+
+    thread_sums[thread_id] = local_sum;
 
     return NULL;
 }
 
-/**
- * @brief The main function that initializes the program, handles user input,
- *        creates threads, and calculates Pi.
- *
- * This function is responsible for:
- * - Asking the user to input the number of iterations and threads.
- * - Creating the threads to calculate parts of Pi.
- * - Synchronizing threads using `pthread_join`.
- * - Finalizing the result by multiplying the calculated sum by 4.
- *
- * @return 0 on successful completion of the program.
- */
 int main()
 {
     printf("You will be asked to input two values:\n");
@@ -65,6 +81,7 @@ int main()
     {
         printf("Enter the number of iterations: ");
         scanf("%d", &total_iterations);
+
         printf("Enter the number of threads: ");
         scanf("%d", &num_threads);
 
@@ -74,17 +91,19 @@ int main()
         }
         else if (total_iterations < 15)
         {
-            printf("%d %s %s quite not enough. For better accuracy, it is recommended at least 15 iterations.\nPlease enter again.\n",
-                   total_iterations,
-                   total_iterations == 1 ? "iteration" : "iterations",
-                   total_iterations == 1 ? "is" : "are");
+            printf("Try at least 15 iterations for accuracy.\n");
         }
     } while (total_iterations <= 0 || num_threads <= 0 || total_iterations < 15);
 
-    pthread_mutex_init(&mutex, NULL);
-
     pthread_t threads[num_threads];
     int thread_ids[num_threads];
+
+    thread_sums = (double *)malloc(num_threads * sizeof(double));
+    if (thread_sums == NULL)
+    {
+        printf("Memory allocation failed.\n");
+        return 1;
+    }
 
     for (int i = 0; i < num_threads; i++)
     {
@@ -97,27 +116,15 @@ int main()
         pthread_join(threads[i], NULL);
     }
 
-    double pi_value = 4.0 * pi_sum;
+    double pi_sum = 0.0;
+    for (int i = 0; i < num_threads; i++)
+    {
+        pi_sum += thread_sums[i];
+    }
 
-    printf("Calculated value of Pi: %.15lf\n", pi_value);
+    free(thread_sums);
 
-    pthread_mutex_destroy(&mutex);
+    printf("\nCalculated value of Pi: %.15lf\n", 4.0 * pi_sum);
 
     return 0;
 }
-//=================================OUTPUT================================
-// You will be asked to input two values:
-// 1. Number of iterations (a positive integer).
-//    - The higher the number of iterations, the more accurate the result.
-//    - For basic calculations, you can use 15-100 iterations.
-//    - For better accuracy, consider using 1000 or more iterations.
-// 2. Number of threads (a positive integer).
-//    - The number of threads determines how many parts the task is divided into.
-
-// Enter the number of iterations: 4
-// Enter the number of threads: 4
-// 4 iterations are quite not enough. For better accuracy, it is recommended at least 15 iterations.
-// Please enter again.
-// Enter the number of iterations: 20
-// Enter the number of threads: 3
-// Calculated value of Pi: 3.091623806667839
